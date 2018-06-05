@@ -41,15 +41,25 @@ void sendData(int idTransmissor){
   if(sensing() && hasData()){
     int posicaoT = arrayT[idTransmissor]->pos;
     meio[posicaoT] = arrayT[idTransmissor]->id;
-    for(int i = posicaoT; i < M_SIZE; i++){
-      meio[posicaoT] = arrayT[idTransmissor]->id;
+
+    int i;
+
+    for(i = 0; i < M_SIZE; i++){
+      int r = M_SIZE - posicaoT + i;
+      int l = posicaoT - i;
+      meio[r] = arrayT[idTransmissor]->id;
+      meio[l] = arrayT[idTransmissor]->id;
+
+      view();
+
       fflush(stdout);
       sleep(1);
     }
+
   }
 }
 
-void sensing(){
+void sensing(){     //>>>>>>>>>>>>>AICIONAR FUNÇÃO PARA RECEBER O DADO CASO TENHA ALGO NA REDE E O DESTINATÁRIO SEJA SEU
   int flagSensing = 0;
   for(i = 0; i < sizeof(M_SIZE); i++){
     if(meio[i]!=NULL){
@@ -106,9 +116,9 @@ void view(){
 
   for (i = 0; i < M_SIZE; i++){
     if (arrayPos[i]!=NULL) {
-      printf("%d\n", arrayPos[i]);
+      printf("%d ", arrayPos[i]);
     }else{
-      printf(" ");
+      printf("  ");
     }
   }
 
