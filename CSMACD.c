@@ -23,20 +23,29 @@ Forma de Avaliação:
 #define M_SIZE 10
 
 int meio[M_SIZE];
-bool colision = false;
-bool usingMedium = false;
+int colision = 0;
+int usingMedium = 0;
 int defaultTime = 10;
 
 struct Transmissor{
 	int id;
-	int dados;
+	int dado;
   int pos;
   int status;
+  int idDestino;
 };
 
-void sendFrame(){
-  int dado=(random()%150);
-  sensing();
+void sendData(int idTransmissor){
+
+  if(sensing() && hasData()){
+    int posicaoT = arrayT[idTransmissor]->pos;
+    meio[posicaoT] = arrayT[idTransmissor]->id;
+    for(int i = posicaoT; i < M_SIZE; i++){
+      meio[posicaoT] = arrayT[idTransmissor]->id;
+      fflush(stdout);
+      sleep(1);
+    }
+  }
 }
 
 void sensing(){
@@ -54,42 +63,64 @@ void colision(){
 }
 
 void backoff(){
+  int tempoEspera = 0;
+  int randTime = (random()%2);
 
 }
 
 void view(){
+  int i;
+  printf("\n --- Meio de transmissão --- \n");
+  printf("\nPosição:  ");
+  for(i = 0; i < M_SIZE; i++)
+    printf("%d ", i);
 
+  printf("\n\n          ");
+
+  for (i = 0; i < M_SIZE; i++)
+    printf("%d ", meio[i]);
+
+  printf("\n");
+}
+
+void inicializaMeio(){
+  int i;
+  for (i = 0; i < M_SIZE; i++) {
+    meio[i] = 0;
+  }
 }
 
 main(){
 
-    int opcao;
-    Transmissor arrayT[N_TR];
-  	pthread_t thread[N_TR];
-  	void *thread_result;
-    //
-    // pthread_mutex_init(&mutex, NULL);
-  	// for(i=0; i<N; i++)
-  	// 	sem_init(&sem_transmissores[i], 0, 0);
-    //
-      do{
-      	printf("Escolha uma das opções abaixo:\n1 - Iniciar simulação;\n0 - Encerrar;\n");
-      	scanf("%d", &opcao);
-    		switch(opcao){
-          case 1:
-              int array[N_TR];
-              for(i=0; i<N_TR; i++){
-                  // array[i]=i;
-    //               pthread_create(&thread[i], NULL, acao_transmissor, &array[i]);
-              }
-    //           for(i=0; i<N; i++)
-    //               pthread_join(thread[i], &thread_result);
-          case 0:
-              printf("\nFim da execução.\n");
-              break;
-          default:
-              printf("Erro! Digite novamente");
-          }
-      } while(opcao!=0);
-  	return 0;
+  inicializaMeio();
+  view();
+  int opcao;
+  Transmissor arrayT[N_TR];
+
+	pthread_t thread[N_TR];
+	void *thread_result;
+  // pthread_mutex_init(&mutex, NULL);
+	// for(i=0; i<N; i++)
+	// 	sem_init(&sem_transmissores[i], 0, 0);
+  //
+    do{
+    	printf("Escolha uma das opções abaixo:\n1 - Iniciar simulação;\n0 - Encerrar;\n");
+    	scanf("%d", &opcao);
+  		switch(opcao){
+        case 1:
+            int array[N_TR];
+            for(i=0; i<N_TR; i++){
+                // array[i]=i;
+  //               pthread_create(&thread[i], NULL, acao_transmissor, &array[i]);
+            }
+  //           for(i=0; i<N; i++)
+  //               pthread_join(thread[i], &thread_result);
+        case 0:
+            printf("\nFim da execução.\n");
+            break;
+        default:
+            printf("Erro! Digite novamente");
+        }
+    } while(opcao!=0);
+	return 0;
 }
