@@ -26,12 +26,13 @@ int meio[M_SIZE];
 int colision = 0;
 int usingMedium = 0;
 int defaultTime = 10;
+int arrayPos[M_SIZE];
 
 struct Transmissor{
 	int id;
 	int dado;
   int pos;
-  int status;
+  int status; //0 - Sem dados; 1 - Com dados, aguardando o meio; 2 - Enviando;
   int idDestino;
 };
 
@@ -68,6 +69,27 @@ void backoff(){
 
 }
 
+void inicializaTransmissores(Transmissor array[]){
+  int i, j;
+  for (i = 0; i < N_TRANSMISSORES; i++) {
+    array[i]->id = i;
+  	array[i]->dado = 0;
+    array[i]->status = 0;
+    array[i]->idDestino = -1;
+
+    do {
+      int newPos = (random()% M_SIZE);
+      int flagPos = 0;
+      if(arrayPos[newPos]!=NULL){
+        flagPos = 1;
+      }
+    } while(flagPos==1);
+
+    array[i]->pos = newPos;
+    arrayPos[array[i]->pos] = array[i]->id;
+  }
+}
+
 void view(){
   int i;
   printf("\n --- Meio de transmissão --- \n");
@@ -80,6 +102,16 @@ void view(){
   for (i = 0; i < M_SIZE; i++)
     printf("%d ", meio[i]);
 
+  printf("\n\n          ");
+
+  for (i = 0; i < M_SIZE; i++){
+    if (arrayPos[i]!=NULL) {
+      printf("%d\n", arrayPos[i]);
+    }else{
+      printf(" ");
+    }
+  }
+
   printf("\n");
 }
 
@@ -87,6 +119,7 @@ void inicializaMeio(){
   int i;
   for (i = 0; i < M_SIZE; i++) {
     meio[i] = 0;
+    arrayPos[i] = NULL;
   }
 }
 
@@ -96,6 +129,8 @@ main(){
   view();
   int opcao;
   Transmissor arrayT[N_TR];
+
+  inicializaTransmissores(arrayT);
 
 	pthread_t thread[N_TR];
 	void *thread_result;
