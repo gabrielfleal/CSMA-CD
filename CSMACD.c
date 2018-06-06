@@ -34,6 +34,7 @@ struct Transmissor{
   int pos;
   int status; //0 - Sem dados; 1 - Com dados, aguardando o meio; 2 - Enviando;
   int idDestino;
+  int dadoRecebido;
 };
 typedef struct Transmissor Transmissor;
 
@@ -68,8 +69,8 @@ void limparMeio(int idTransmissor){
   int posInicio = arrayT[idTransmissor].pos;
   int i;
   for(i = 0; i < M_SIZE; i++){
-    int r = M_SIZE - posicaoT + i;
-    int l = posicaoT - i;
+    int r = M_SIZE - posInicio + i;
+    int l = posInicio - i;
 
     if (l >= 0 && meio[l] != arrayT[idTransmissor].id) {
       meio[l] = -1;
@@ -84,7 +85,8 @@ void limparMeio(int idTransmissor){
 }
 
 void sendData(int idTransmissor){
-  if(!sensing() && possuiDado()){
+  // sensing();
+  if(!sensing(idTransmissor) && possuiDado()){
     arrayT[idTransmissor].status = 2;
     int posicaoT = arrayT[idTransmissor].pos;
     meio[posicaoT] = arrayT[idTransmissor].id;
@@ -121,14 +123,29 @@ int possuiDado(int idTransmissor){
   return flagDado;
 }
 
-int sensing(){     //>>>>>>>AICIONAR FUNÇÃO PARA RECEBER O DADO CASO O DESTINATÁRIO SEJA SEU
-  int flagSensing = 0;
+int sensing(int idTransmissor){     //>>>>>>>AICIONAR FUNÇÃO PARA RECEBER O DADO CASO O DESTINATÁRIO SEJA SEU
+  int flagSensing;
   int i;
-  for(i = 0; i < sizeof(M_SIZE); i++){
-    if(&meio[i]!=NULL){
-      flagSensing = 1;
+
+  do{
+    sleep(3); //Tempo para verificar se o meio está ocupado
+    flagSensing = 0;
+    for(i = 0; i < sizeof(M_SIZE); i++){
+      if(meio[i] != -1){ //O meio está ocupado com algo
+        flagSensing = 1;
+        if(i == arrayT[idTransmissor].pos){
+          if(meio[i] == -2){ //O sinal -2 mostra que ocorreu colision e o jam chegou na posição deste transmissor
+            sleep(3);
+          }else
+          if(arrayT[meio[i]].idDestino == idTransmissor){ //O meio possui sinal que não é indicador colision -> Testar se o dado transmitido possui como destino o id do Transmissor que está verificando o meio
+            arrayT[idTransmissor].dadoRecebido = arrayT[meio[i]].dado;
+            sleep(1);
+          }
+        }
+      }
     }
-  }
+  }while(flagSensing==1);
+  arrayT[idTransmissor].dadoRecebido = -1;
   return flagSensing;
 }
 
@@ -149,6 +166,7 @@ void inicializaTransmissores(Transmissor array[]){
   	array[i].dado = -1;
     array[i].status = 0;
     array[i].idDestino = -1;
+    array[i].dadoRecebido = -1;
 
     int flagPos = 0;
     int newPos;
@@ -237,10 +255,9 @@ main(){
 }
 //To-Do
 /*
-Conferir se há dados com destino para o meu id e gravar o dado
-Testar colision (Adicionar função na hora de preencher o meio)
-Enviar jams
-Sensing - Testar se tem jams no meio
-Backoff/tempo de espera
-Threads
+  Testar colision (Adicionar função na hora de preencher o meio)
+  Enviar jams
+  Sensing - Testar se tem jams no meio
+  Backoff/tempo de espera
+  Threads
 */
