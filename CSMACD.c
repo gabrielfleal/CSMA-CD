@@ -84,9 +84,22 @@ void limparMeio(int idTransmissor){
   }
 }
 
+void enviarJam(){
+  
+}
+
+int detectarColisao(int pos, int idTransmissor){
+  int flagColisao = 0;
+  if(meio[pos] != -1 && meio[pos] != idTransmissor){
+    flagColisao = 1;
+    printf("\n----- Colisão na posição: %d\n", pos);
+    enviarJam();
+  }
+  return flagColisao;
+}
+
 void sendData(int idTransmissor){
-  // sensing();
-  if(!sensing(idTransmissor) && possuiDado()){
+  if(!sensing(idTransmissor) && possuiDado(idTransmissor)){
     arrayT[idTransmissor].status = 2;
     int posicaoT = arrayT[idTransmissor].pos;
     meio[posicaoT] = arrayT[idTransmissor].id;
@@ -97,10 +110,19 @@ void sendData(int idTransmissor){
       int l = posicaoT - i;
 
       if (l >= 0) {
-        meio[l] = arrayT[idTransmissor].id;
+        if(detectarColisao(l, idTransmissor)){
+            break;
+        }else{
+          meio[l] = arrayT[idTransmissor].id;
+        }
       }
+
       if (r < M_SIZE) {
-        meio[r] = arrayT[idTransmissor].id;
+        if(detectarColisao(r, idTransmissor)){
+            break;
+        }else{
+          meio[r] = arrayT[idTransmissor].id;
+        }
       }
 
       view();
@@ -123,15 +145,14 @@ int possuiDado(int idTransmissor){
   return flagDado;
 }
 
-int sensing(int idTransmissor){     //>>>>>>>AICIONAR FUNÇÃO PARA RECEBER O DADO CASO O DESTINATÁRIO SEJA SEU
+int sensing(int idTransmissor){
   int flagSensing;
   int i;
-
   do{
     sleep(3); //Tempo para verificar se o meio está ocupado
     flagSensing = 0;
     for(i = 0; i < sizeof(M_SIZE); i++){
-      if(meio[i] != -1){ //O meio está ocupado com algo
+      if(meio[i] != -1){ //O meio está ocupado
         flagSensing = 1;
         if(i == arrayT[idTransmissor].pos){
           if(meio[i] == -2){ //O sinal -2 mostra que ocorreu colision e o jam chegou na posição deste transmissor
@@ -146,17 +167,13 @@ int sensing(int idTransmissor){     //>>>>>>>AICIONAR FUNÇÃO PARA RECEBER O DA
     }
   }while(flagSensing==1);
   arrayT[idTransmissor].dadoRecebido = -1;
+
   return flagSensing;
-}
-
-void colision(){
-
 }
 
 void backoff(){
   int tempoEspera = 0;
   int randTime = (random()%2);
-
 }
 
 void inicializaTransmissores(Transmissor array[]){
@@ -176,7 +193,6 @@ void inicializaTransmissores(Transmissor array[]){
       if(arrayPos[newPos]!= -1){
         flagPos = 1;
       }
-
     } while(flagPos==1);
 
     array[i].pos = newPos;
@@ -255,9 +271,7 @@ main(){
 }
 //To-Do
 /*
-  Testar colision (Adicionar função na hora de preencher o meio)
   Enviar jams
-  Sensing - Testar se tem jams no meio
   Backoff/tempo de espera
   Threads
 */
