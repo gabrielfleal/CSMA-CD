@@ -36,19 +36,24 @@ struct Transmissor{
   int idDestino;
 };
 
-void sendData(int idTransmissor){
+void sendData(int idTransmissor){       //Adicionar destino
 
-  if(sensing() && hasData()){
+  if(!sensing() && hasData()){
     int posicaoT = arrayT[idTransmissor]->pos;
     meio[posicaoT] = arrayT[idTransmissor]->id;
 
     int i;
-
+                sendHelp();
     for(i = 0; i < M_SIZE; i++){
       int r = M_SIZE - posicaoT + i;
       int l = posicaoT - i;
-      meio[r] = arrayT[idTransmissor]->id;
-      meio[l] = arrayT[idTransmissor]->id;
+
+      if (r < M_SIZE) {
+        meio[l] = arrayT[idTransmissor]->id;
+      }
+      if (r < M_SIZE) {
+        meio[r] = arrayT[idTransmissor]->id;
+      }
 
       view();
 
@@ -169,3 +174,15 @@ main(){
     } while(opcao!=0);
 	return 0;
 }
+//To-Do
+/*
+Gerar dados aleatoriamente
+Função hasData()
+Adicionar destino pros dados
+Conferir se há dados com destino para o meu id e gravar o dado
+Testar colision (Adicionar função na hora de preencher o meio)
+Enviar jams
+Sensing - Testar se tem jams no meio
+Backoff/tempo de espera
+Threads
+*/
