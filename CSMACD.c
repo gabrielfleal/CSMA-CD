@@ -1,23 +1,9 @@
-/*
-O trabalho consiste em desenvolver uma simulação para o controle de acesso ao  meio utilizado em redes IEEE 802.3.
-A implementação deve possuir no mínimo dois transmissores que utilizam a tecnologia citada. Cada transmissor antes de enviar
-um quadro deverá verificar (sensing), por um determinado intervalo de tempo, se o meio de transmissão está ocupado, ou ocorreu colisões.
-Caso o meio de transmissão estiver ocupado, deve-se implementar o algoritmo de backoff, isto é, esperar um tempo exponencial truncado.
-
-Forma de Avaliação:
-1. Implementação dos transmissores – valor 1
-2. Definição, verificação e implementação da ocupação do canal - valor 2
-3. Definição e detecção de colisões - valor 2
-4. Implementação do algoritmo backoff - valor 2
-5. Visualização dos quadros sendo transmitido– valor 2
-6. Apresentação do trabalho - valor 1
-*/
-
-#include<semaphore.h>
-#include<pthread.h>
 #include<stdio.h>
 #include<stdlib.h>
+#include<pthread.h>
+#include<semaphore.h>
 #include<unistd.h>
+#include<time.h>
 
 #define N_TRANSMISSORES 2
 #define M_SIZE 10
@@ -41,25 +27,58 @@ typedef struct Transmissor Transmissor;
 
 Transmissor arrayT[N_TRANSMISSORES];
 
+void inicializaTransmissores(){
+  int i, j;
+  for (i = 0; i < N_TRANSMISSORES; i++) {
+    arrayT[i].id = i;
+  	arrayT[i].dado = -1;
+    arrayT[i].status = 0;
+    arrayT[i].idDestino = -1;
+    arrayT[i].dadoRecebido = -1;
+    arrayT[i].nBackoff = 0;
+
+    int flagPos = 0;
+    int newPos;
+    do {
+      newPos = (int)(random()% M_SIZE-1);
+      flagPos = 0;
+      if(arrayPos[newPos]!= -1){
+        flagPos = 1;
+      }
+    } while(flagPos==1);
+
+    arrayT[i].pos = newPos;
+    arrayPos[arrayT[i].pos] = arrayT[i].id;
+  }
+}
+
+void inicializaMeio(){
+  int i;
+  for (i = 0; i < M_SIZE; i++) {
+    meio[i] = -1; // -1 significa que o meio está vazio; -2 indica colisão;
+    arrayPos[i] = -1; // -1 significa que não há nenhum transmissor naquela posição
+  }
+}
+
 void view(){
   int i;
   printf("\n --- Meio de transmissão --- \n");
   printf("\nPosição:  ");
-  for(i = 0; i < M_SIZE; i++)
-    printf("%d ", i);
-
-  printf("\n\n          ");
-
-  for (i = 0; i < M_SIZE; i++)
-    printf("%d ", meio[i]);
-
+  for(i = 0; i < M_SIZE; i++){
+    printf("%d  ", i);
+  }
   printf("\n\n          ");
 
   for (i = 0; i < M_SIZE; i++){
-    if (&arrayPos[i] != NULL) {
+    printf("%d ", meio[i]);
+  }
+  printf("\n\n          ");
+
+  for (i = 0; i < M_SIZE; i++){
+    if (arrayPos[i] != -1) {
       printf("%d ", arrayPos[i]);
     }else{
-      printf("  ");
+      printf("-1 ");
     }
   }
 
@@ -127,7 +146,7 @@ int detectarColisao(int pos, int idTransmissor){
   return flagColisao;
 }
 
-void sendData(int idTransmissor){
+void enviarDado(int idTransmissor){
   if(!sensing(idTransmissor) && possuiDado(idTransmissor)){
     arrayT[idTransmissor].status = 2;
     int posicaoT = arrayT[idTransmissor].pos;
@@ -178,13 +197,13 @@ int sensing(int idTransmissor){
   int flagSensing;
   int i;
   do{
-    sleep(3); //Tempo para verificar se o meio está ocupado
+    sleep(3); //Tempo fixo para verificar se o meio está ocupado
     flagSensing = 0;
     for(i = 0; i < sizeof(M_SIZE); i++){
       if(meio[i] != -1){ //O meio está ocupado
         flagSensing = 1;
         if(i == arrayT[idTransmissor].pos){
-          if(meio[i] == -2){ //O sinal -2 mostra que ocorreu colision e o jam chegou na posição deste transmissor
+          if(meio[i] == -2){ //O sinal -2 indica que ocorreu colision e o jam chegou na posição deste transmissor
             backoff(idTransmissor);
             break;
           }else
@@ -199,39 +218,6 @@ int sensing(int idTransmissor){
   arrayT[idTransmissor].dadoRecebido = -1;
 
   return flagSensing;
-}
-
-void inicializaTransmissores(){
-  int i, j;
-  for (i = 0; i < N_TRANSMISSORES; i++) {
-    arrayT[i].id = i;
-  	arrayT[i].dado = -1;
-    arrayT[i].status = 0;
-    arrayT[i].idDestino = -1;
-    arrayT[i].dadoRecebido = -1;
-    arrayT[i].nBackoff = 0;
-
-    int flagPos = 0;
-    int newPos;
-    do {
-      newPos = (int)(random()% M_SIZE-1);
-      flagPos = 0;
-      if(arrayPos[newPos]!= -1){
-        flagPos = 1;
-      }
-    } while(flagPos==1);
-
-    arrayT[i].pos = newPos;
-    arrayPos[arrayT[i].pos] = arrayT[i].id;
-  }
-}
-
-void inicializaMeio(){
-  int i;
-  for (i = 0; i < M_SIZE; i++) {
-    meio[i] = 0;
-    arrayPos[i] = -1;
-  }
 }
 
 void *geraDado(void *idTransmissor){
@@ -255,31 +241,26 @@ void *geraDado(void *idTransmissor){
       } while(flagPos==1);
 
       arrayT[id].idDestino = newPos;
-
-      sendData(id);
+      enviarDado(id);
     }
   }
 }
 
 main(){
-
-  inicializaMeio();
-  view();
+  srand(time(0));
   int opcao, i;
-
+  inicializaMeio();
   inicializaTransmissores();
+  view();
 
-	pthread_t thread[N_TRANSMISSORES];
-
-	void *thread_result;
-
+  int nArray[N_TRANSMISSORES];
+  pthread_t thread[N_TRANSMISSORES];
+  void *thread_result;
   do{
   	printf("Escolha uma das opções abaixo:\n1 - Iniciar simulação;\n0 - Encerrar;\n");
   	scanf("%d", &opcao);
 		switch(opcao){
       case 1:
-          printf("\n");
-          int nArray[N_TRANSMISSORES];
           for(i = 0; i < N_TRANSMISSORES; i++){
               nArray[i] = i;
               pthread_create(&thread[i], NULL, geraDado, &nArray[i]);
@@ -293,5 +274,4 @@ main(){
           printf("Erro! Digite novamente");
       }
   } while(opcao!=0);
-	return 0;
 }
