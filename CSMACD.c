@@ -23,7 +23,7 @@ Forma de Avaliação:
 #define M_SIZE 10
 
 int meio[M_SIZE];
-int colision = 0;
+int nColision = 0;
 int usingMedium = 0;
 int defaultTime = 10;
 int arrayPos[M_SIZE];
@@ -35,24 +35,53 @@ struct Transmissor{
   int status; //0 - Sem dados; 1 - Com dados, aguardando o meio; 2 - Enviando;
   int idDestino;
 };
+typedef struct Transmissor Transmissor;
+
+Transmissor arrayT[N_TRANSMISSORES];
+
+void view(){
+  int i;
+  printf("\n --- Meio de transmissão --- \n");
+  printf("\nPosição:  ");
+  for(i = 0; i < M_SIZE; i++)
+    printf("%d ", i);
+
+  printf("\n\n          ");
+
+  for (i = 0; i < M_SIZE; i++)
+    printf("%d ", meio[i]);
+
+  printf("\n\n          ");
+
+  for (i = 0; i < M_SIZE; i++){
+    if (&arrayPos[i] != NULL) {
+      printf("%d ", arrayPos[i]);
+    }else{
+      printf("  ");
+    }
+  }
+
+  printf("\n");
+}
 
 void sendData(int idTransmissor){       //Adicionar destino
 
-  if(!sensing() && hasData()){
-    int posicaoT = arrayT[idTransmissor]->pos;
-    meio[posicaoT] = arrayT[idTransmissor]->id;
+  // if(!sensing() && hasData()){         Adicionar hasData//
+  if(!sensing()){
+    arrayT[idTransmissor].status = 2;
+    int posicaoT = arrayT[idTransmissor].pos;
+    meio[posicaoT] = arrayT[idTransmissor].id;
 
     int i;
-                sendHelp();
     for(i = 0; i < M_SIZE; i++){
       int r = M_SIZE - posicaoT + i;
       int l = posicaoT - i;
 
       if (r < M_SIZE) {
-        meio[l] = arrayT[idTransmissor]->id;
+        meio[l] = arrayT[idTransmissor].id;
       }
       if (r < M_SIZE) {
-        meio[r] = arrayT[idTransmissor]->id;
+        meio[r] = arrayT[idTransmissor].id;
       }
 
       view();
@@ -64,10 +93,11 @@ void sendData(int idTransmissor){       //Adicionar destino
   }
 }
 
-void sensing(){     //>>>>>>>>>>>>>AICIONAR FUNÇÃO PARA RECEBER O DADO CASO TENHA ALGO NA REDE E O DESTINATÁRIO SEJA SEU
+int sensing(){     //>>>>>>>>>>>>>AICIONAR FUNÇÃO PARA RECEBER O DADO CASO TENHA ALGO NA REDE E O DESTINATÁRIO SEJA SEU
   int flagSensing = 0;
+  int i;
   for(i = 0; i < sizeof(M_SIZE); i++){
-    if(meio[i]!=NULL){
+    if(&meio[i]!=NULL){
       flagSensing = 1;
     }
   }
@@ -87,67 +117,51 @@ void backoff(){
 void inicializaTransmissores(Transmissor array[]){
   int i, j;
   for (i = 0; i < N_TRANSMISSORES; i++) {
-    array[i]->id = i;
-  	array[i]->dado = 0;
-    array[i]->status = 0;
-    array[i]->idDestino = -1;
+    array[i].id = i;
+  	array[i].dado = 0;
+    array[i].status = 0;
+    array[i].idDestino = -1;
 
+    int flagPos = 0;
+    int newPos;
     do {
-      int newPos = (random()% M_SIZE);
-      int flagPos = 0;
-      if(arrayPos[newPos]!=NULL){
+      newPos = (int)(random()% M_SIZE);
+      flagPos = 0;
+      if(arrayPos[newPos]!= -1){
         flagPos = 1;
       }
+
     } while(flagPos==1);
 
-    array[i]->pos = newPos;
-    arrayPos[array[i]->pos] = array[i]->id;
+    array[i].pos = newPos;
+    arrayPos[array[i].pos] = array[i].id;
   }
 }
 
-void view(){
-  int i;
-  printf("\n --- Meio de transmissão --- \n");
-  printf("\nPosição:  ");
-  for(i = 0; i < M_SIZE; i++)
-    printf("%d ", i);
 
-  printf("\n\n          ");
-
-  for (i = 0; i < M_SIZE; i++)
-    printf("%d ", meio[i]);
-
-  printf("\n\n          ");
-
-  for (i = 0; i < M_SIZE; i++){
-    if (arrayPos[i]!=NULL) {
-      printf("%d ", arrayPos[i]);
-    }else{
-      printf("  ");
-    }
-  }
-
-  printf("\n");
-}
 
 void inicializaMeio(){
   int i;
   for (i = 0; i < M_SIZE; i++) {
     meio[i] = 0;
-    arrayPos[i] = NULL;
+    arrayPos[i] = -1;
   }
+}
+
+void geraDado(int idTransmissor){
+  int novoDado = (random()%100);
+  arrayT[idTransmissor].dado = novoDado;
 }
 
 main(){
 
   inicializaMeio();
   view();
-  int opcao;
-  Transmissor arrayT[N_TR];
+  int opcao, i;
 
   inicializaTransmissores(arrayT);
 
-	pthread_t thread[N_TR];
+	pthread_t thread[N_TRANSMISSORES];
 	void *thread_result;
   // pthread_mutex_init(&mutex, NULL);
 	// for(i=0; i<N; i++)
@@ -158,8 +172,7 @@ main(){
     	scanf("%d", &opcao);
   		switch(opcao){
         case 1:
-            int array[N_TR];
-            for(i=0; i<N_TR; i++){
+            for(i=0; i<N_TRANSMISSORES; i++){
                 // array[i]=i;
   //               pthread_create(&thread[i], NULL, acao_transmissor, &array[i]);
             }
