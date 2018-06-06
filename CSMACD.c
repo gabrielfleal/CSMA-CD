@@ -21,10 +21,10 @@ Forma de Avaliação:
 
 #define N_TRANSMISSORES 2
 #define M_SIZE 10
+#define MAX_COLISIONS 50
 
 int meio[M_SIZE];
 int nColision = 0;
-int usingMedium = 0;
 int defaultTime = 10;
 int arrayPos[M_SIZE];
 
@@ -64,10 +64,27 @@ void view(){
   printf("\n");
 }
 
-void sendData(int idTransmissor){       //Adicionar destino
+void limparMeio(int idTransmissor){
+  int posInicio = arrayT[idTransmissor].pos;
+  int i;
+  for(i = 0; i < M_SIZE; i++){
+    int r = M_SIZE - posicaoT + i;
+    int l = posicaoT - i;
 
-  // if(!sensing() && hasData()){         Adicionar hasData//
-  if(!sensing()){
+    if (l >= 0 && meio[l] != arrayT[idTransmissor].id) {
+      meio[l] = -1;
+    }
+    if (r < M_SIZE && meio[r] != arrayT[idTransmissor].id) {
+      meio[r] = -1;
+    }
+    view();
+    fflush(stdout);
+    sleep(1);
+  }
+}
+
+void sendData(int idTransmissor){
+  if(!sensing() && possuiDado()){
     arrayT[idTransmissor].status = 2;
     int posicaoT = arrayT[idTransmissor].pos;
     meio[posicaoT] = arrayT[idTransmissor].id;
@@ -77,7 +94,7 @@ void sendData(int idTransmissor){       //Adicionar destino
       int r = M_SIZE - posicaoT + i;
       int l = posicaoT - i;
 
-      if (r < M_SIZE) {
+      if (l >= 0) {
         meio[l] = arrayT[idTransmissor].id;
       }
       if (r < M_SIZE) {
@@ -85,15 +102,26 @@ void sendData(int idTransmissor){       //Adicionar destino
       }
 
       view();
-
       fflush(stdout);
       sleep(1);
     }
-
   }
+  arrayT[idTransmissor].status = 0; //O status do transmissor volta a ficar livre e o dado enviado e seu destino são apagados
+  arrayT[idTransmissor].dado = -1;
+  arrayT[idTransmissor].idDestino = -1;
+
+  limparMeio(idTransmissor);
 }
 
-int sensing(){     //>>>>>>>>>>>>>AICIONAR FUNÇÃO PARA RECEBER O DADO CASO TENHA ALGO NA REDE E O DESTINATÁRIO SEJA SEU
+int possuiDado(int idTransmissor){
+  int flagDado = 0;
+  if(arrayT[idTransmissor].status != 0){
+    flagDado = 1;
+  }
+  return flagDado;
+}
+
+int sensing(){     //>>>>>>>AICIONAR FUNÇÃO PARA RECEBER O DADO CASO O DESTINATÁRIO SEJA SEU
   int flagSensing = 0;
   int i;
   for(i = 0; i < sizeof(M_SIZE); i++){
@@ -118,14 +146,14 @@ void inicializaTransmissores(Transmissor array[]){
   int i, j;
   for (i = 0; i < N_TRANSMISSORES; i++) {
     array[i].id = i;
-  	array[i].dado = 0;
+  	array[i].dado = -1;
     array[i].status = 0;
     array[i].idDestino = -1;
 
     int flagPos = 0;
     int newPos;
     do {
-      newPos = (int)(random()% M_SIZE);
+      newPos = (int)(random()% M_SIZE-1);
       flagPos = 0;
       if(arrayPos[newPos]!= -1){
         flagPos = 1;
@@ -138,8 +166,6 @@ void inicializaTransmissores(Transmissor array[]){
   }
 }
 
-
-
 void inicializaMeio(){
   int i;
   for (i = 0; i < M_SIZE; i++) {
@@ -149,8 +175,30 @@ void inicializaMeio(){
 }
 
 void geraDado(int idTransmissor){
-  int novoDado = (random()%100);
-  arrayT[idTransmissor].dado = novoDado;
+  int novoDado;
+
+  while(nColision < MAX_COLISIONS){
+    sleep(1);
+    novoDado = (random()%100);
+    if(novoDado > (30+(5*idTransmissor)) ){
+      arrayT[idTransmissor].dado = novoDado;
+      arrayT[idTransmissor].status = 1;
+
+      int flagPos = 0;
+      int newPos;
+      do {
+        newPos = (int)(random()% M_SIZE-1);
+        flagPos = 0;
+        if(arrayPos[newPos] == -1 || arrayPos[newPos] != arrayT[idTransmissor].pos){
+          flagPos = 1;
+        }
+      } while(flagPos==1);
+
+      arrayT[idTransmissor].idDestino = newPos;
+
+      sendData(idTransmissor);
+    }
+  }
 }
 
 main(){
@@ -189,9 +237,6 @@ main(){
 }
 //To-Do
 /*
-Gerar dados aleatoriamente
-Função hasData()
-Adicionar destino pros dados
 Conferir se há dados com destino para o meu id e gravar o dado
 Testar colision (Adicionar função na hora de preencher o meio)
 Enviar jams
