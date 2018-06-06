@@ -35,6 +35,7 @@ struct Transmissor{
   int status; //0 - Sem dados; 1 - Com dados, aguardando o meio; 2 - Enviando;
   int idDestino;
   int dadoRecebido;
+  int nBackoff;
 };
 typedef struct Transmissor Transmissor;
 
@@ -84,8 +85,36 @@ void limparMeio(int idTransmissor){
   }
 }
 
-void enviarJam(){
-  
+void enviarJam(int pos, int idTransmissor){
+  int i;
+  for(i = 0; i < M_SIZE; i++){
+    int r = M_SIZE - pos + i;
+    int l = pos - i;
+
+    if (l >= 0) {
+      meio[l] = -2;
+    }
+    if (r < M_SIZE) {
+      meio[r] = -2;
+    }
+
+    view();
+    fflush(stdout);
+    sleep(1);
+  }
+  sleep(3);
+}
+
+void backoff(int idTransmissor){
+  if(arrayT[idTransmissor].nBackoff < 16){
+    sleep(arrayT[idTransmissor].nBackoff);
+  }else{
+    arrayT[idTransmissor].nBackoff = 0;
+    arrayT[idTransmissor].dado = -1;
+    arrayT[idTransmissor].idDestino = -1;
+    arrayT[idTransmissor].status = 0;
+  }
+  limparMeio(idTransmissor);
 }
 
 int detectarColisao(int pos, int idTransmissor){
@@ -93,7 +122,7 @@ int detectarColisao(int pos, int idTransmissor){
   if(meio[pos] != -1 && meio[pos] != idTransmissor){
     flagColisao = 1;
     printf("\n----- Colisão na posição: %d\n", pos);
-    enviarJam();
+    enviarJam(pos, idTransmissor);
   }
   return flagColisao;
 }
@@ -156,7 +185,8 @@ int sensing(int idTransmissor){
         flagSensing = 1;
         if(i == arrayT[idTransmissor].pos){
           if(meio[i] == -2){ //O sinal -2 mostra que ocorreu colision e o jam chegou na posição deste transmissor
-            sleep(3);
+            backoff(idTransmissor);
+            break;
           }else
           if(arrayT[meio[i]].idDestino == idTransmissor){ //O meio possui sinal que não é indicador colision -> Testar se o dado transmitido possui como destino o id do Transmissor que está verificando o meio
             arrayT[idTransmissor].dadoRecebido = arrayT[meio[i]].dado;
@@ -171,19 +201,15 @@ int sensing(int idTransmissor){
   return flagSensing;
 }
 
-void backoff(){
-  int tempoEspera = 0;
-  int randTime = (random()%2);
-}
-
-void inicializaTransmissores(Transmissor array[]){
+void inicializaTransmissores(){
   int i, j;
   for (i = 0; i < N_TRANSMISSORES; i++) {
-    array[i].id = i;
-  	array[i].dado = -1;
-    array[i].status = 0;
-    array[i].idDestino = -1;
-    array[i].dadoRecebido = -1;
+    arrayT[i].id = i;
+  	arrayT[i].dado = -1;
+    arrayT[i].status = 0;
+    arrayT[i].idDestino = -1;
+    arrayT[i].dadoRecebido = -1;
+    arrayT[i].nBackoff = 0;
 
     int flagPos = 0;
     int newPos;
@@ -195,8 +221,8 @@ void inicializaTransmissores(Transmissor array[]){
       }
     } while(flagPos==1);
 
-    array[i].pos = newPos;
-    arrayPos[array[i].pos] = array[i].id;
+    arrayT[i].pos = newPos;
+    arrayPos[arrayT[i].pos] = arrayT[i].id;
   }
 }
 
@@ -208,29 +234,29 @@ void inicializaMeio(){
   }
 }
 
-void geraDado(int idTransmissor){
+void *geraDado(void *idTransmissor){
   int novoDado;
-
+  int id = *(int*) idTransmissor;
   while(nColision < MAX_COLISIONS){
     sleep(1);
     novoDado = (random()%100);
-    if(novoDado > (30+(5*idTransmissor)) ){
-      arrayT[idTransmissor].dado = novoDado;
-      arrayT[idTransmissor].status = 1;
+    if(novoDado > (30+(5*id)) ){
+      arrayT[id].dado = novoDado;
+      arrayT[id].status = 1;
 
       int flagPos = 0;
       int newPos;
       do {
         newPos = (int)(random()% M_SIZE-1);
         flagPos = 0;
-        if(arrayPos[newPos] == -1 || arrayPos[newPos] != arrayT[idTransmissor].pos){
+        if(arrayPos[newPos] == -1 || arrayPos[newPos] != arrayT[id].pos){
           flagPos = 1;
         }
       } while(flagPos==1);
 
-      arrayT[idTransmissor].idDestino = newPos;
+      arrayT[id].idDestino = newPos;
 
-      sendData(idTransmissor);
+      sendData(id);
     }
   }
 }
@@ -241,37 +267,31 @@ main(){
   view();
   int opcao, i;
 
-  inicializaTransmissores(arrayT);
+  inicializaTransmissores();
 
 	pthread_t thread[N_TRANSMISSORES];
+
 	void *thread_result;
-  // pthread_mutex_init(&mutex, NULL);
-	// for(i=0; i<N; i++)
-	// 	sem_init(&sem_transmissores[i], 0, 0);
-  //
-    do{
-    	printf("Escolha uma das opções abaixo:\n1 - Iniciar simulação;\n0 - Encerrar;\n");
-    	scanf("%d", &opcao);
-  		switch(opcao){
-        case 1:
-            for(i=0; i<N_TRANSMISSORES; i++){
-                // array[i]=i;
-  //               pthread_create(&thread[i], NULL, acao_transmissor, &array[i]);
-            }
-  //           for(i=0; i<N; i++)
-  //               pthread_join(thread[i], &thread_result);
-        case 0:
-            printf("\nFim da execução.\n");
-            break;
-        default:
-            printf("Erro! Digite novamente");
-        }
-    } while(opcao!=0);
+
+  do{
+  	printf("Escolha uma das opções abaixo:\n1 - Iniciar simulação;\n0 - Encerrar;\n");
+  	scanf("%d", &opcao);
+		switch(opcao){
+      case 1:
+          printf("\n");
+          int nArray[N_TRANSMISSORES];
+          for(i = 0; i < N_TRANSMISSORES; i++){
+              nArray[i] = i;
+              pthread_create(&thread[i], NULL, geraDado, &nArray[i]);
+          }
+          for(i = 0; i < N_TRANSMISSORES; i++)
+              pthread_join(thread[i], &thread_result);
+      case 0:
+          printf("\nFim da execução.\n");
+          break;
+      default:
+          printf("Erro! Digite novamente");
+      }
+  } while(opcao!=0);
 	return 0;
 }
-//To-Do
-/*
-  Enviar jams
-  Backoff/tempo de espera
-  Threads
-*/
